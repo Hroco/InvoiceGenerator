@@ -283,14 +283,9 @@ export async function processExcel({
 }
 
 async function getSenderById(senderId: number): Promise<Sender> {
-  const personDataPath = path.join(
-    __dirname,
-    "..",
-    "..",
-    "src",
-    "data",
-    "PersonalData.json"
-  );
+  const personDataPath = isDev
+    ? path.join(__dirname, "..", "..", "src", "data", "PersonalData.json")
+    : path.join(process.resourcesPath, "data", "PersonalData.json");
 
   if (!fs.existsSync(personDataPath)) {
     console.error("PersonalData.json not found at path:", personDataPath);
@@ -507,14 +502,9 @@ export async function updateSender(sender: Sender) {
   }
 
   //Update import personData from "../data/PersonalData.json"; with new sender data
-  const personDataPath = path.join(
-    __dirname,
-    "..",
-    "..",
-    "src",
-    "data",
-    "PersonalData.json"
-  );
+  const personDataPath = isDev
+    ? path.join(__dirname, "..", "..", "src", "data", "PersonalData.json")
+    : path.join(process.resourcesPath, "data", "PersonalData.json");
   if (!fs.existsSync(personDataPath)) {
     console.error("PersonalData.json not found at path:", personDataPath);
   } else {

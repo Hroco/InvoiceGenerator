@@ -17,7 +17,11 @@ if (require("electron-squirrel-startup")) {
   app.quit();
 }
 
-updateElectronApp();
+updateElectronApp({
+  updateInterval: "5 minutes",
+  notifyUser: true,
+  repo: "Hroco/InvoiceGenerator",
+});
 
 const createWindow = (): void => {
   // Create the browser window.
@@ -33,7 +37,7 @@ const createWindow = (): void => {
   mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
 
   // Open the DevTools.
-  mainWindow.webContents.openDevTools();
+  //mainWindow.webContents.openDevTools();
 };
 
 // This method will be called when Electron has finished

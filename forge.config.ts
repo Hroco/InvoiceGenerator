@@ -20,13 +20,14 @@ const config: ForgeConfig = {
           owner: "Hroco",
           name: "InvoiceGenerator",
         },
-        prerelease: true,
+        prerelease: false,
       },
     },
   ],
   packagerConfig: {
     asar: true,
     executableName: "invoice-generator",
+    extraResource: ["src/data"],
   },
   rebuildConfig: {},
   makers: [

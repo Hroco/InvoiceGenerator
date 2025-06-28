@@ -1,7 +1,7 @@
 {
   "name": "invoice-generator",
   "productName": "Invoice Generator",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A simple Electron app for generating invoices",
   "main": ".webpack/main",
   "repository": {
@@ -60,6 +60,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "electron-is-dev": "^3.0.1",
+    "electron-log": "^5.4.1",
     "electron-squirrel-startup": "^1.0.1",
     "exceljs": "^4.4.0",
     "lucide-react": "^0.523.0",
