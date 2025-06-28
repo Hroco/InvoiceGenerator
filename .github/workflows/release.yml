@@ -34,6 +34,7 @@ jobs:
           git add package.json package-lock.json
           git commit -m "Update version to $(node -p "require('./package.json').version")" || exit 0
           git push
+          git push origin HEAD:main
       - name: Get package version
         id: package-version
         shell: bash
