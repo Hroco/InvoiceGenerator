@@ -28,6 +28,7 @@ const config: ForgeConfig = {
     asar: true,
     executableName: "invoice-generator",
     extraResource: ["src/data"],
+    icon: "src/data/Proj_IceCream.ico",
   },
   rebuildConfig: {},
   makers: [
