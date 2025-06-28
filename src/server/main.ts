@@ -186,9 +186,18 @@ function processItemRow(
   }
 }
 
-function processHeading(sheet: ExcelJS.Worksheet, sender: Sender) {
-  sheet.getRow(8).getCell(2).value =
-    "Dodací list č: " + sender.lastID + "/" + sender.yearOFLastID;
+function processHeading(
+  sheet: ExcelJS.Worksheet,
+  sender: Sender,
+  asInvoice: boolean
+) {
+  if (asInvoice) {
+    sheet.getRow(8).getCell(2).value =
+      "Faktúra č: " + sender.invoiceLastID + "/" + sender.invoiceYearOFLastID;
+  } else {
+    sheet.getRow(8).getCell(2).value =
+      "Dodací list č: " + sender.lastID + "/" + sender.yearOFLastID;
+  }
 }
 
 export async function processExcel({
@@ -198,6 +207,7 @@ export async function processExcel({
   company,
   templatePath,
   tempPath,
+  asInvoice,
 }: {
   items: IceCream[];
   sender: Sender;
@@ -205,6 +215,7 @@ export async function processExcel({
   company: Company;
   templatePath: string;
   tempPath: string;
+  asInvoice: boolean;
 }) {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(templatePath);
@@ -212,7 +223,7 @@ export async function processExcel({
   const sheet = workbook.getWorksheet(1);
   const startRow = 19;
 
-  processHeading(sheet, sender);
+  processHeading(sheet, sender, asInvoice);
 
   processDateHeader(sheet);
 
@@ -336,6 +347,69 @@ export async function generateAndOpenExcel({
     company,
     templatePath,
     tempPath,
+    asInvoice: false,
+  });
+
+  if (isDev) {
+    // v dev režime otvori excel normálne
+    await shell.openPath(tempPath);
+  } else {
+    // v produkcii otvori v Print Preview pomocou PowerShell COM
+    const psScript = [
+      `$excel  = New-Object -ComObject Excel.Application`,
+      `$wb     = $excel.Workbooks.Open('${tempPath.replace(/\\/g, "\\\\")}')`,
+      `$excel.Visible = $true`,
+      `$wb.ActiveSheet.PrintPreview($true)`,
+    ].join("; ");
+
+    spawn(
+      "powershell.exe",
+      ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psScript],
+      { shell: true }
+    );
+  }
+
+  return { success: true };
+}
+
+export async function generateAndOpenExcelInvoice({
+  items,
+  senderId,
+  car,
+  company,
+}: {
+  items: IceCream[];
+  senderId: number;
+  car: Car;
+  company: Company;
+}): Promise<{ success: boolean; error?: string }> {
+  const sender = await getSenderById(senderId);
+
+  const tempPath = path.join(os.tmpdir(), `preview-${Date.now()}.xlsx`);
+
+  const templatePath = isDev
+    ? path.join(__dirname, "..", "..", "src", "data", "template.xlsx")
+    : path.join(process.resourcesPath, "data", "template.xlsx");
+
+  if (!fs.existsSync(templatePath)) {
+    dialog.showMessageBox({
+      type: "error",
+      title: "Chyba",
+      message: "Súbor šablóny (template.xlsx) nebol nájdený.",
+      detail: `Skontrolujte, či sa súbor nachádza na očakávanej ceste:\n${templatePath}`,
+    });
+
+    return { success: false, error: "Template file not found" };
+  }
+
+  await processExcel({
+    items,
+    sender,
+    car,
+    company,
+    templatePath,
+    tempPath,
+    asInvoice: true,
   });
 
   if (isDev) {
@@ -384,6 +458,7 @@ export async function exportToPDF({
     company,
     templatePath,
     tempPath: tempXlsx,
+    asInvoice: false,
   });
 
   const { canceled, filePath } = await dialog.showSaveDialog({
@@ -424,6 +499,11 @@ export async function updateSender(sender: Sender) {
   if (sender.yearOFLastID !== currentYear) {
     sender.yearOFLastID = currentYear;
     sender.lastID = 1; // Reset lastID to 1 for new year
+  }
+
+  if (sender.invoiceYearOFLastID !== currentYear) {
+    sender.invoiceYearOFLastID = currentYear;
+    sender.invoiceLastID = 1; // Reset lastID to 1 for new year
   }
 
   //Update import personData from "../data/PersonalData.json"; with new sender data

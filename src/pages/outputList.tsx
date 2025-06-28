@@ -18,7 +18,7 @@ export const OutPutList: React.FC<Props> = ({
 }) => {
   if (items.length === 0) {
     return (
-      <div className="bg-gray-100 rounded-lg text-gray-500 text-center min-h-[600px] p-4 flex-1">
+      <div className="bg-gray-100 rounded-lg text-gray-500 text-center min-h-0 p-4 flex-1">
         Žiadne položky v objednávke
       </div>
     );

@@ -25,6 +25,8 @@ export type Sender = {
   priceS: number;
   lastID: number;
   yearOFLastID: number;
+  invoiceLastID: number;
+  invoiceYearOFLastID: number;
   isDPHPayer: boolean;
 };
 

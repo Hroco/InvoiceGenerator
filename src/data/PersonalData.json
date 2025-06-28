@@ -17,8 +17,10 @@
     "email2": "vanillia706@gmail.com",
     "priceN": 38,
     "priceS": 48,
-    "lastID": 2,
+    "lastID": 7,
     "yearOFLastID": 2025,
+    "invoiceLastID": 1,
+    "invoiceYearOFLastID": 2025,
     "isDPHPayer": true
   },
   {
@@ -41,6 +43,8 @@
     "priceS": 48,
     "lastID": 1,
     "yearOFLastID": 2025,
+    "invoiceLastID": 5,
+    "invoiceYearOFLastID": 2020,
     "isDPHPayer": false
   }
 ]
