@@ -1,4 +1,4 @@
-import { Car, Company, IceCream, Sender } from "@/lib/types";
+import { Car, Company, IceCream, Sender } from "../lib/types";
 import { dialog, shell } from "electron";
 import path from "path";
 import os from "os";
@@ -6,6 +6,159 @@ import fs from "fs";
 import ExcelJS from "exceljs";
 import isDev from "electron-is-dev";
 import { spawn } from "child_process";
+
+// Data management functions
+const APP_DATA_FOLDER = "InvoiceGenerator";
+const DATA_FILES = [
+  "Cars.json",
+  "Clients.json",
+  "IceCream.json",
+  "PersonalData.json",
+  "Template.xlsx",
+  "Proj_IceCream.ico",
+];
+
+function getDocumentsDataPath(): string {
+  const documentsPath = path.join(os.homedir(), "Documents", APP_DATA_FOLDER);
+  return documentsPath;
+}
+
+function getSourceDataPath(): string {
+  return isDev
+    ? path.join(__dirname, "..", "..", "src", "data")
+    : path.join(process.resourcesPath, "data");
+}
+
+function getDataFilePath(fileName: string): string {
+  return path.join(getDocumentsDataPath(), fileName);
+}
+
+async function ensureDocumentsDataFolder(): Promise<void> {
+  const documentsDataPath = getDocumentsDataPath();
+
+  if (!fs.existsSync(documentsDataPath)) {
+    fs.mkdirSync(documentsDataPath, { recursive: true });
+    console.log(`Created data folder at: ${documentsDataPath}`);
+  }
+}
+
+async function copyDataFiles(): Promise<void> {
+  const sourceDataPath = getSourceDataPath();
+  const documentsDataPath = getDocumentsDataPath();
+
+  for (const fileName of DATA_FILES) {
+    const sourcePath = path.join(sourceDataPath, fileName);
+    const destPath = path.join(documentsDataPath, fileName);
+
+    if (fs.existsSync(sourcePath) && !fs.existsSync(destPath)) {
+      try {
+        fs.copyFileSync(sourcePath, destPath);
+        console.log(`Copied ${fileName} to Documents folder`);
+      } catch (error) {
+        console.error(`Failed to copy ${fileName}:`, error);
+      }
+    }
+  }
+}
+
+export async function initializeDataFiles(): Promise<void> {
+  try {
+    console.log("Initializing data files...");
+    await ensureDocumentsDataFolder();
+    await copyDataFiles();
+    console.log("Data files initialization completed successfully");
+    console.log("Data folder location:", getDocumentsDataPath());
+  } catch (error) {
+    console.error("Failed to initialize data files:", error);
+  }
+}
+
+// Data loading functions for frontend
+export function getIceCreamData(): IceCream[] {
+  try {
+    const filePath = getDataFilePath("IceCream.json");
+    if (fs.existsSync(filePath)) {
+      return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+    }
+    return [];
+  } catch (error) {
+    console.error("Failed to load IceCream data:", error);
+    return [];
+  }
+}
+
+export function getPersonalData(): Sender[] {
+  try {
+    const filePath = getDataFilePath("PersonalData.json");
+    if (fs.existsSync(filePath)) {
+      return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+    }
+    return [];
+  } catch (error) {
+    console.error("Failed to load PersonalData:", error);
+    return [];
+  }
+}
+
+export function getClientsData(): Company[] {
+  try {
+    const filePath = getDataFilePath("Clients.json");
+    if (fs.existsSync(filePath)) {
+      return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+    }
+    return [];
+  } catch (error) {
+    console.error("Failed to load Clients data:", error);
+    return [];
+  }
+}
+
+export function getCarsData(): Car[] {
+  try {
+    const filePath = getDataFilePath("Cars.json");
+    if (fs.existsSync(filePath)) {
+      return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+    }
+    return [];
+  } catch (error) {
+    console.error("Failed to load Cars data:", error);
+    return [];
+  }
+}
+
+// Data saving functions
+export function saveIceCreamData(data: IceCream[]): boolean {
+  try {
+    const filePath = getDataFilePath("IceCream.json");
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    return true;
+  } catch (error) {
+    console.error("Failed to save IceCream data:", error);
+    return false;
+  }
+}
+
+export function saveClientsData(data: Company[]): boolean {
+  try {
+    const filePath = getDataFilePath("Clients.json");
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    return true;
+  } catch (error) {
+    console.error("Failed to save Clients data:", error);
+    return false;
+  }
+}
+
+export function saveCarsData(data: Car[]): boolean {
+  try {
+    const filePath = getDataFilePath("Cars.json");
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    return true;
+  } catch (error) {
+    console.error("Failed to save Cars data:", error);
+    return false;
+  }
+}
 
 function processSummaryRow(
   sheet: ExcelJS.Worksheet,
@@ -283,9 +436,7 @@ export async function processExcel({
 }
 
 async function getSenderById(senderId: number): Promise<Sender> {
-  const personDataPath = isDev
-    ? path.join(__dirname, "..", "..", "src", "data", "PersonalData.json")
-    : path.join(process.resourcesPath, "data", "PersonalData.json");
+  const personDataPath = getDataFilePath("PersonalData.json");
 
   if (!fs.existsSync(personDataPath)) {
     console.error("PersonalData.json not found at path:", personDataPath);
@@ -320,15 +471,13 @@ export async function generateAndOpenExcel({
 
   const tempPath = path.join(os.tmpdir(), `preview-${Date.now()}.xlsx`);
 
-  const templatePath = isDev
-    ? path.join(__dirname, "..", "..", "src", "data", "template.xlsx")
-    : path.join(process.resourcesPath, "data", "template.xlsx");
+  const templatePath = getDataFilePath("Template.xlsx");
 
   if (!fs.existsSync(templatePath)) {
     dialog.showMessageBox({
       type: "error",
       title: "Chyba",
-      message: "Súbor šablóny (template.xlsx) nebol nájdený.",
+      message: "Súbor šablóny (Template.xlsx) nebol nájdený.",
       detail: `Skontrolujte, či sa súbor nachádza na očakávanej ceste:\n${templatePath}`,
     });
 
@@ -382,15 +531,13 @@ export async function generateAndOpenExcelInvoice({
 
   const tempPath = path.join(os.tmpdir(), `preview-${Date.now()}.xlsx`);
 
-  const templatePath = isDev
-    ? path.join(__dirname, "..", "..", "src", "data", "template.xlsx")
-    : path.join(process.resourcesPath, "data", "template.xlsx");
+  const templatePath = getDataFilePath("Template.xlsx");
 
   if (!fs.existsSync(templatePath)) {
     dialog.showMessageBox({
       type: "error",
       title: "Chyba",
-      message: "Súbor šablóny (template.xlsx) nebol nájdený.",
+      message: "Súbor šablóny (Template.xlsx) nebol nájdený.",
       detail: `Skontrolujte, či sa súbor nachádza na očakávanej ceste:\n${templatePath}`,
     });
 
@@ -441,9 +588,7 @@ export async function exportToPDF({
   company: Company;
 }): Promise<{ success: boolean; error?: string } | { canceled: boolean }> {
   const sender = await getSenderById(senderId);
-  const templatePath = isDev
-    ? path.join(__dirname, "..", "..", "src", "data", "template.xlsx")
-    : path.join(process.resourcesPath, "data", "template.xlsx");
+  const templatePath = getDataFilePath("Template.xlsx");
   const tempXlsx = path.join(os.tmpdir(), `export-${Date.now()}.xlsx`);
 
   await processExcel({
@@ -502,9 +647,7 @@ export async function updateSender(sender: Sender) {
   }
 
   //Update import personData from "../data/PersonalData.json"; with new sender data
-  const personDataPath = isDev
-    ? path.join(__dirname, "..", "..", "src", "data", "PersonalData.json")
-    : path.join(process.resourcesPath, "data", "PersonalData.json");
+  const personDataPath = getDataFilePath("PersonalData.json");
   if (!fs.existsSync(personDataPath)) {
     console.error("PersonalData.json not found at path:", personDataPath);
   } else {

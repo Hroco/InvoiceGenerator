@@ -1,8 +1,5 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Car, Company, IceCream, Sender } from "@/lib/types";
-import personData from "../data/PersonalData.json";
-import senderReceiverData from "../data/Clients.json";
-import CarsData from "../data/Cars.json";
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -12,6 +9,8 @@ type Props = {
   selectedSender: string;
   selectedCompany: string;
   selectedCar: string;
+  shouldTriggerSync: boolean;
+  setTriggerSync: () => void;
 };
 
 export const OutPutButtons: React.FC<Props> = ({
@@ -21,7 +20,33 @@ export const OutPutButtons: React.FC<Props> = ({
   selectedSender,
   selectedCompany,
   selectedCar,
+  shouldTriggerSync,
+  setTriggerSync,
 }) => {
+  const [personData, setPersonData] = useState<Sender[]>([]);
+  const [senderReceiverData, setSenderReceiverData] = useState<Company[]>([]);
+  const [CarsData, setCarsData] = useState<Car[]>([]);
+
+  const loadData = async () => {
+    try {
+      const [personalData, clientsData, carsData] = await Promise.all([
+        window.electron.invoke("get-personal-data"),
+        window.electron.invoke("get-clients-data"),
+        window.electron.invoke("get-cars-data"),
+      ]);
+      setPersonData(personalData);
+      setSenderReceiverData(clientsData);
+      setCarsData(carsData);
+    } catch (error) {
+      console.error("Failed to load data:", error);
+    }
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    loadData();
+  }, [shouldTriggerSync]);
+
   const senderDetails = personData.find(
     (person) => person.name === selectedSender
   );
@@ -43,6 +68,8 @@ export const OutPutButtons: React.FC<Props> = ({
     console.log("Updating sender details:", sender);
 
     await window.electron.invoke("update-sender", sender);
+    setTriggerSync();
+    loadData();
   };
 
   const printInvoice = async () => {

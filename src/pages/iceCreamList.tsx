@@ -1,9 +1,24 @@
-import React from "react";
-import iceCreamsData from "../data/IceCream.json";
+import React, { useState, useEffect } from "react";
 import { IceCream } from "../lib/types";
 import { cn } from "@/lib/utils";
 
 export default function AllIceCreamList() {
+  const [iceCreamsData, setIceCreamsData] = useState<IceCream[]>([]);
+
+  // Load ice cream data on component mount
+  useEffect(() => {
+    const loadIceCreamData = async () => {
+      try {
+        const data = await window.electron.invoke("get-ice-cream-data");
+        setIceCreamsData(data);
+      } catch (error) {
+        console.error("Failed to load ice cream data:", error);
+      }
+    };
+
+    loadIceCreamData();
+  }, []);
+
   return (
     <div className="flex flex-col w-full md:w-1/3 bg-white rounded-xl shadow-lg overflow-auto">
       <div className="max-h-full overflow-hidden flex flex-wrap">

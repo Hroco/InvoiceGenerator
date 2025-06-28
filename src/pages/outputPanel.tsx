@@ -7,7 +7,6 @@ import { OutputEntry } from "./outputEntry";
 import { OutPutDisplay } from "./outputDisplay";
 import { OutPutButtons } from "./outButtons";
 import { OutPutList } from "./outputList";
-import iceCreamsData from "../data/IceCream.json";
 import { IceCream as IceCreamType } from "@/lib/types";
 
 type Props = {
@@ -15,6 +14,8 @@ type Props = {
   setSelectedSender: (value: string) => void;
   selectedCompany: string;
   selectedCar: string;
+  shouldTriggerSync: boolean;
+  setTriggerSync: () => void;
 };
 
 export const OutputPanel: React.FC<Props> = ({
@@ -22,14 +23,30 @@ export const OutputPanel: React.FC<Props> = ({
   setSelectedSender,
   selectedCompany,
   selectedCar,
+  shouldTriggerSync,
+  setTriggerSync,
 }) => {
   const [inputValue, setInputValue] = useState("");
-
   const [orderItems, setOrderItems] = useState<IceCreamType[]>([]);
-
+  const [iceCreamsData, setIceCreamsData] = useState<IceCreamType[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [displayText, setDisplayText] = useState("");
+
+  // Load ice cream data on component mount
+  useEffect(() => {
+    const loadIceCreamData = async () => {
+      try {
+        const data = await window.electron.invoke("get-ice-cream-data");
+        setIceCreamsData(data);
+      } catch (error) {
+        console.error("Failed to load ice cream data:", error);
+        setError("Failed to load ice cream data");
+      }
+    };
+
+    loadIceCreamData();
+  }, []);
 
   useEffect(() => {
     if (inputValue === "") {
@@ -159,6 +176,8 @@ export const OutputPanel: React.FC<Props> = ({
           selectedSender={selectedSender}
           selectedCompany={selectedCompany}
           selectedCar={selectedCar}
+          shouldTriggerSync={shouldTriggerSync}
+          setTriggerSync={setTriggerSync}
         />
       </div>
 
