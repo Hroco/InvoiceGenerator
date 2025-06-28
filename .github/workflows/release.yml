@@ -7,6 +7,8 @@ on:
 jobs:
   release:
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
 
     strategy:
       matrix:
@@ -15,20 +17,28 @@ jobs:
     steps:
       - name: Github checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
       - run: npm ci
+      - name: Update package version
+        shell: bash
+        run: |
+          npm version patch --no-git-tag-version
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add package.json package-lock.json
+          git commit -m "Update version to $(node -p "require('./package.json').version")" || exit 0
+          git push
       - name: Get package version
         id: package-version
         shell: bash
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-          else
-            echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
-          fi
+          echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
       - name: Create Release
         shell: bash
         env:
