@@ -17,8 +17,8 @@ const config: ForgeConfig = {
       name: "@electron-forge/publisher-github",
       config: {
         repository: {
-          owner: "me",
-          name: "invoice-generator",
+          owner: "Hroco",
+          name: "InvoiceGenerator",
         },
         prerelease: true,
       },
