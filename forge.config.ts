@@ -26,6 +26,7 @@ const config: ForgeConfig = {
   ],
   packagerConfig: {
     asar: true,
+    executableName: "invoice-generator",
   },
   rebuildConfig: {},
   makers: [
