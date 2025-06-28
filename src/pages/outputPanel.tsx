@@ -142,7 +142,7 @@ export const OutputPanel: React.FC<Props> = ({
         }}
         onEnterPress={handleAddItem}
       />
-      <div className="mt-1 mb-2">
+      <div className="mt-4">
         <OutPutDisplay
           selectedItem={
             orderItems.length > 0 ? orderItems[orderItems.length - 1] : null
