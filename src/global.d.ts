@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Car, Company, IceCream, Sender } from "./lib/types";
 
 declare global {
@@ -13,6 +14,7 @@ declare global {
         data: any
       ): Promise<any>;
       invoke(channel: "export-to-pdf", data: any): Promise<any>;
+      invoke(channel: "print-data", data: any): Promise<any>;
       invoke(channel: "update-sender", data: Sender): Promise<any>;
       invoke(channel: string, data?: any): Promise<any>;
     };

@@ -169,15 +169,23 @@ function processSummaryRow(
   sumDPHFromTotalPrice: number,
   isDPHPayer: boolean
 ) {
+  const MAXITEMSPERPAGE = 26; // Maximum items per page without Summary row
   const totalKs = items.reduce((sum, item) => sum + item.amount, 0);
-  const numberOfItems = items.length;
+
+  const numberOfItems =
+    items.length > MAXITEMSPERPAGE && items.length <= 30
+      ? 30 + 12
+      : items.length > 30
+      ? items.length + 12
+      : items.length;
+
   const summaryRowLineBegin = sheet.getRow(startRow + numberOfItems);
   const summaryRow = sheet.getRow(startRow + numberOfItems + 1);
   const summaryRow2 = sheet.getRow(startRow + numberOfItems + 2);
   const summaryRowLineEnd = sheet.getRow(startRow + numberOfItems + 3);
 
   summaryRowLineBegin.getCell(2).value =
-    "---------------------------------------------------------------------------------------------------------------------------------------------------------";
+    "---------------------------------------------------------------------------------------------------------------------------------------------";
 
   summaryRow.getCell(2).value = "Spolu";
 
@@ -222,7 +230,7 @@ function processSummaryRow(
   summaryRow2.getCell(10).value = totalS + "l";
 
   summaryRowLineEnd.getCell(2).value =
-    "---------------------------------------------------------------------------------------------------------------------------------------------------------";
+    "---------------------------------------------------------------------------------------------------------------------------------------------";
 
   summaryRow.commit();
   summaryRow2.commit();
@@ -274,20 +282,20 @@ function processSenderHeader(sheet: ExcelJS.Worksheet, sender: Sender) {
   sheet.getRow(5).getCell(3).value = sender.psc;
   sheet.getRow(6).getCell(3).value = sender.state;
   sheet.getRow(3).getCell(5).value =
-    "   Meno: " + sender.name + " " + sender.lastname;
-  sheet.getRow(4).getCell(5).value = "     IČO: " + sender.ico;
-  sheet.getRow(4).getCell(7).value = "     mobil: ";
+    "Meno: " + sender.name + " " + sender.lastname;
+  sheet.getRow(4).getCell(5).value = "IČO: " + sender.ico;
+  sheet.getRow(4).getCell(7).value = "mobil: ";
   sheet.getRow(4).getCell(8).value = sender.phonenumber;
-  sheet.getRow(5).getCell(5).value = "     DIC: " + sender.dic;
-  sheet.getRow(6).getCell(5).value = "   IČ DPH: " + sender.icdph;
+  sheet.getRow(5).getCell(5).value = "DIC: " + sender.dic;
+  sheet.getRow(6).getCell(5).value = "IČ DPH: " + sender.icdph;
 
   sheet.getRow(54).getCell(5).value =
-    "   Meno: " + sender.name + " " + sender.lastname;
-  sheet.getRow(55).getCell(5).value = "     IČO: " + sender.ico;
-  sheet.getRow(55).getCell(7).value = "     mobil: ";
+    "Meno: " + sender.name + " " + sender.lastname;
+  sheet.getRow(55).getCell(5).value = "IČO: " + sender.ico;
+  sheet.getRow(55).getCell(7).value = "mobil: ";
   sheet.getRow(55).getCell(8).value = sender.phonenumber;
-  sheet.getRow(56).getCell(5).value = "     DIC: " + sender.dic;
-  sheet.getRow(57).getCell(5).value = "   IČ DPH: " + sender.icdph;
+  sheet.getRow(56).getCell(5).value = "DIC: " + sender.dic;
+  sheet.getRow(57).getCell(5).value = "IČ DPH: " + sender.icdph;
   sheet.getRow(54).getCell(3).value = sender.name + " " + sender.lastname;
   sheet.getRow(55).getCell(3).value = sender.city + "  " + sender.street;
   sheet.getRow(56).getCell(3).value = sender.psc;
@@ -318,7 +326,8 @@ function processItemRow(
   totalPrice: number,
   isDPHPayer: boolean
 ) {
-  const row = sheet.getRow(lineIndex);
+  const currentLineIndex = lineIndex > 48 ? lineIndex + 12 : lineIndex;
+  const row = sheet.getRow(currentLineIndex);
   if (isDPHPayer) {
     row.getCell(2).value = item.name;
     row.getCell(4).value = item.amount.toFixed(2) + " ks";
@@ -432,6 +441,15 @@ export async function processExcel({
     sender.isDPHPayer
   );
 
+  //Set Print area to A1 to K52 if only one page is needed
+  if (items.length <= 26) {
+    console.log("Less than 26 items, removing second page");
+    sheet.pageSetup.printArea = "A1:K52";
+  } else {
+    console.log("More than 26 items, keeping second page");
+    sheet.pageSetup.printArea = "A1:K108";
+  }
+
   await workbook.xlsx.writeFile(tempPath);
 }
 
@@ -528,10 +546,8 @@ export async function generateAndOpenExcelInvoice({
   company: Company;
 }): Promise<{ success: boolean; error?: string }> {
   const sender = await getSenderById(senderId);
-
-  const tempPath = path.join(os.tmpdir(), `preview-${Date.now()}.xlsx`);
-
   const templatePath = getDataFilePath("Template.xlsx");
+  const tempPath = path.join(os.tmpdir(), `preview-${Date.now()}.xlsx`);
 
   if (!fs.existsSync(templatePath)) {
     dialog.showMessageBox({
@@ -554,24 +570,22 @@ export async function generateAndOpenExcelInvoice({
     asInvoice: true,
   });
 
-  if (isDev) {
-    // v dev režime otvori excel normálne
-    await shell.openPath(tempPath);
-  } else {
-    // v produkcii otvori v Print Preview pomocou PowerShell COM
-    const psScript = [
-      `$excel  = New-Object -ComObject Excel.Application`,
-      `$wb     = $excel.Workbooks.Open('${tempPath.replace(/\\/g, "\\\\")}')`,
-      `$excel.Visible = $true`,
-      `$wb.ActiveSheet.PrintPreview($true)`,
-    ].join("; ");
+  const xlsxEscaped = tempPath.replace(/\\/g, "\\\\");
 
-    spawn(
-      "powershell.exe",
-      ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psScript],
-      { shell: true }
-    );
-  }
+  const ps = [
+    `$excel = New-Object -ComObject Excel.Application`,
+    `$excel.Visible = $false`,
+    `$wb = $excel.Workbooks.Open('${xlsxEscaped}')`,
+    `$wb.PrintOut()`,
+    `$wb.Close($false)`,
+    `$excel.Quit()`,
+  ].join("; ");
+
+  spawn(
+    "powershell.exe",
+    ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps],
+    { shell: true }
+  );
 
   return { success: true };
 }
@@ -618,6 +632,64 @@ export async function exportToPDF({
     `$excel.Visible = $false`,
     `$wb = $excel.Workbooks.Open('${xlsxEscaped}')`,
     `$wb.ExportAsFixedFormat(0, '${pdfEscaped}')`,
+    `$wb.Close($false)`,
+    `$excel.Quit()`,
+  ].join("; ");
+
+  spawn(
+    "powershell.exe",
+    ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps],
+    { shell: true }
+  );
+
+  return { success: true };
+}
+
+// This function is used to print data directly from the application
+// It generates an Excel file, and print it via active printer
+export async function printData({
+  items,
+  senderId,
+  car,
+  company,
+}: {
+  items: IceCream[];
+  senderId: number;
+  car: Car;
+  company: Company;
+}): Promise<{ success: boolean; error?: string }> {
+  console.log("Printing data");
+  const sender = await getSenderById(senderId);
+  const templatePath = getDataFilePath("Template.xlsx");
+  const tempXlsx = path.join(os.tmpdir(), `export-${Date.now()}.xlsx`);
+
+  if (!fs.existsSync(templatePath)) {
+    dialog.showMessageBox({
+      type: "error",
+      title: "Chyba",
+      message: "Súbor šablóny (Template.xlsx) nebol nájdený.",
+      detail: `Skontrolujte, či sa súbor nachádza na očakávanej ceste:\n${templatePath}`,
+    });
+
+    return { success: false, error: "Template file not found" };
+  }
+
+  await processExcel({
+    items,
+    sender,
+    car,
+    company,
+    templatePath,
+    tempPath: tempXlsx,
+    asInvoice: false,
+  });
+
+  const xlsxEscaped = tempXlsx.replace(/\\/g, "\\\\");
+  const ps = [
+    `$excel = New-Object -ComObject Excel.Application`,
+    `$excel.Visible = $false`,
+    `$wb = $excel.Workbooks.Open('${xlsxEscaped}')`,
+    `$wb.PrintOut()`,
     `$wb.Close($false)`,
     `$excel.Quit()`,
   ].join("; ");
