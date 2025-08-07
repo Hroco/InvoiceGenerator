@@ -1,5 +1,5 @@
 import { Car, Company, IceCream, Sender } from "../lib/types";
-import { dialog, shell } from "electron";
+import { dialog, shell, app } from "electron";
 import path from "path";
 import os from "os";
 import fs from "fs";
@@ -74,6 +74,15 @@ export async function initializeDataFiles(): Promise<void> {
 }
 
 // Data loading functions for frontend
+export function getAppVersion(): string {
+  try {
+    return app.getVersion();
+  } catch (error) {
+    console.error("Failed to get app version:", error);
+    return "Unknown";
+  }
+}
+
 export function getIceCreamData(): IceCream[] {
   try {
     const filePath = getDataFilePath("IceCream.json");

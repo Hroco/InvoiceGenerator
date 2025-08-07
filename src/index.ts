@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, autoUpdater, BrowserWindow, ipcMain } from "electron";
 import {
   exportToPDF,
   generateAndOpenExcel,
@@ -9,6 +9,7 @@ import {
   getPersonalData,
   getClientsData,
   getCarsData,
+  getAppVersion,
   saveIceCreamData,
   saveClientsData,
   saveCarsData,
@@ -59,6 +60,19 @@ app.on("ready", async () => {
   createWindow();
 });
 
+// Function to send logs to renderer process
+const sendLogToRenderer = (level: string, message: string, data?: unknown) => {
+  const mainWindow = BrowserWindow.getAllWindows()[0];
+  if (mainWindow) {
+    mainWindow.webContents.send("main-process-log", {
+      level,
+      message,
+      data,
+      timestamp: new Date().toISOString(),
+    });
+  }
+};
+
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
@@ -75,6 +89,50 @@ app.on("activate", () => {
     createWindow();
   }
 });
+
+autoUpdater.on("error", (error) => {
+  console.error("An error occurred in the main process:", error);
+  sendLogToRenderer("error", "An error occurred in the main process", error);
+});
+
+autoUpdater.on("checking-for-update", () => {
+  console.log("Checking for update...");
+  sendLogToRenderer("info", "Checking for update...");
+});
+
+autoUpdater.on("update-available", () => {
+  console.log("Update available.");
+  sendLogToRenderer("info", "Update available.");
+});
+
+autoUpdater.on("update-not-available", () => {
+  console.log("Update not available.");
+  sendLogToRenderer("info", "Update not available.");
+});
+
+autoUpdater.on(
+  "update-downloaded",
+  (
+    event: Event,
+    releaseNotes: string,
+    releaseName: string,
+    releaseDate: Date,
+    updateURL: string
+  ) => {
+    const updateInfo = {
+      releaseNotes,
+      releaseName,
+      releaseDate,
+      updateURL,
+    };
+    console.log("Update downloaded:", updateInfo);
+    sendLogToRenderer("info", "Update downloaded", updateInfo);
+  }
+);
+
+// ipcMain.handle("check-for-updates", async (_event, args) => {
+//   autoUpdater.checkForUpdates();
+// });
 
 ipcMain.handle("generate-and-open-excel", async (_event, args) => {
   return generateAndOpenExcel(args);
@@ -98,6 +156,10 @@ ipcMain.handle("update-sender", async (_event, args) => {
 });
 
 // Data loading IPC handlers
+ipcMain.handle("get-app-version", async () => {
+  return getAppVersion();
+});
+
 ipcMain.handle("get-ice-cream-data", async () => {
   return getIceCreamData();
 });
